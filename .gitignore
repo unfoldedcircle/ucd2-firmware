@@ -1,0 +1,12 @@
+.pio
+.vscode/.browse.c_cpp.db*
+.vscode/c_cpp_properties.json
+.vscode/launch.json
+.vscode/ipch
+.idea
+.DS_Store
+ca
+logs
+secret-signing-key.pem
+tools/ir_torture/node_modules
+tools/ir_repeat/node_modules

@@ -1,0 +1,41 @@
+# GitHub Action that verifies C++ source compliance with cpplint
+
+name: Code Guidelines
+on:
+  push:
+    paths:
+      - lib/**.cpp
+      - lib/**.h
+      - src/**.cpp
+      - src/**.h
+  pull_request:
+    paths:
+      - lib/**.cpp
+      - lib/**.h
+      - src/**.cpp
+      - src/**.h
+
+jobs:
+  cpplint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - run: python -m pip install cpplint
+      - name: cpplint
+        shell: python
+        run: |
+          import os
+          import re
+          import subprocess
+          import sys
+          import glob
+
+          print("Python {}.{}.{}".format(*sys.version_info))
+
+          print("cpplint:")
+          result = subprocess.run(["cpplint", "--filter=-build/include_subdir,-build/c++11", "--linelength=120", "--exclude=lib/Update", "--root=lib", "--recursive", "lib", "src"], text=True)
+          if result.returncode:
+            sys.exit(result.returncode)

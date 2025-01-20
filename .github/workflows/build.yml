@@ -1,0 +1,226 @@
+name: PlatformIO CI
+
+on:
+  push:
+    paths:
+      - 'lib/**'
+      - 'src/**'
+      - 'platformio.ini'
+      - '.github/**/*.yml'
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+
+env:
+  DEBUG_OUTPUT: "true"
+  APP_NAME: UCD2-firmware
+  BOARD_REV_1: "r5_4"     # production units
+  # BOARD_REV_2: "r5_3"
+  # BOARD_REV_3: "r5_2"
+  HASH_FILENAME: UCD2-firmware.hash
+  BUILD_CHANGELOG: build-changelog.md
+
+jobs:
+  build:
+
+    runs-on: ubuntu-24.04
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        # History of 200 should be more than enough to calculate commit count since last release tag.
+        fetch-depth: 200
+
+    # make sure there's no latest tag, otherwise git-semver fails!
+    - name: Fetch all tags to determine version with git-semver
+      run: |
+        git fetch origin +refs/tags/v*:refs/tags/v*
+        git tag -d latest || true
+        FW_VERSION=$(./tools/git-version.sh)
+        echo "Version: $FW_VERSION"
+        echo "FW_VERSION=$FW_VERSION" >> $GITHUB_ENV
+
+    - name: Cache pip
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        #restore-keys: |
+        #  ${{ runner.os }}-pip-
+    - name: Cache PlatformIO
+      uses: actions/cache@v4
+      with:
+        path: ~/.platformio
+        key: ${{ runner.os }}-${{ hashFiles('**/package.json') }}
+        # key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }} this was from the original docs, but there are no lockfiles!
+    - name: Set up Python
+      uses: actions/setup-python@v4
+    - name: Install PlatformIO
+      run: |
+        python -m pip install --upgrade pip
+        pip install --upgrade platformio
+
+    - name: Run native tests
+      run: |
+        pio test --environment unit-tests
+
+    # OTA_SIGNING_KEY_FILE env variable is used in sign_firmware.py and overrides the defined signing keys as build args in platformio.ini
+    - name: Prepare development signing key (non production build)
+      if: "!contains(github.ref, 'tags/v')"
+      env:
+        OTA_SIGNING_KEY: ${{ secrets.OTA_SIGNING_KEY_DEV }}
+      run: |
+        mkdir $HOME/secrets
+        echo "${{ env.OTA_SIGNING_KEY }}" > $HOME/secrets/signing-key.pem
+        echo "OTA_SIGNING_KEY_FILE=$HOME/secrets/signing-key.pem" >> $GITHUB_ENV
+        # build embedded public certificate chain for development
+        # ATTENTION: replacing a public key might change the git repository state and return a dirty state determining the version with ./tools/git-version.sh
+        rm -f ota_public_key.pem
+        cp ota_public_key-dev.pem ota_public_key.pem
+
+    - name: Prepare release signing key for production
+      if: "contains(github.ref, 'tags/v')"
+      env:
+        OTA_SIGNING_KEY: ${{ secrets.OTA_SIGNING_KEY_PROD }}
+      run: |
+        mkdir $HOME/secrets
+        echo "${{ env.OTA_SIGNING_KEY }}" > $HOME/secrets/signing-key.pem
+        echo "OTA_SIGNING_KEY_FILE=$HOME/secrets/signing-key.pem" >> $GITHUB_ENV
+
+    - name: Run PlatformIO
+      run: |
+        # pio run -e UCD2-${{ env.BOARD_REV_1 }}-GitHub -e UCD2-${{ env.BOARD_REV_2 }}-GitHub -e UCD2-${{ env.BOARD_REV_3 }}-GitHub
+        pio run -e UCD2-${{ env.BOARD_REV_1 }}-GitHub
+        rm "${{ env.OTA_SIGNING_KEY_FILE }}"
+
+    - name: Create firmware archive
+      run: |
+        mv ".pio/build/UCD2-${{ env.BOARD_REV_1 }}-GitHub/firmware.bin" "./${{ env.APP_NAME }}_${{ env.BOARD_REV_1 }}.bin"
+        mv ".pio/build/UCD2-${{ env.BOARD_REV_1 }}-GitHub/firmware.bin.signed" "./${{ env.APP_NAME }}_${{ env.BOARD_REV_1 }}.bin.signed"
+        tar -czvf ${{ env.APP_NAME }}_${{ env.BOARD_REV_1 }}-${{ env.FW_VERSION }}.tar.gz ./${{ env.APP_NAME }}_${{ env.BOARD_REV_1 }}.bin*
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.APP_NAME }}_${{ env.BOARD_REV_1 }}-${{ env.FW_VERSION }}
+        path: ${{ env.APP_NAME }}_${{ env.BOARD_REV_1 }}-${{ env.FW_VERSION }}.tar.gz
+        if-no-files-found: error
+        retention-days: 3
+
+  changelog:
+    name: Create changelog
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: "Create Changelog"
+        run: |
+          npm install -g conventional-changelog-cli
+          conventional-changelog -p conventionalcommits -u -o ${{ env.BUILD_CHANGELOG }}
+          cat ${{ env.BUILD_CHANGELOG }}
+
+      - name: Upload changelog
+        uses: actions/upload-artifact@v4
+        with:
+          name: changelog
+          path: ${{ env.BUILD_CHANGELOG }}
+          if-no-files-found: error
+          retention-days: 3      
+
+  release:
+    name: GitHub release
+    if: github.ref == 'refs/heads/main' || contains(github.ref, 'tags/v')
+    runs-on: ubuntu-24.04
+    needs: [ build, changelog ]
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Log
+        if: env.DEBUG_OUTPUT == 'true'
+        run: |
+          echo "--- Structure of downloaded artifacts ---"
+          ls -R
+          echo "--- Environment ---"
+          printenv
+
+      - name: Set build timestamp
+        run: |
+          echo "TIMESTAMP=$(date +"%Y%m%d_%H%M%S")" >> $GITHUB_ENV
+
+      - name: Extract tar.gz build archives from downloaded artifacts
+        run: |
+          # Files are wrapped in tar from actions/upload-artifact, then extracted into a directory by actions/download-artifact
+          ls -lah
+          for D in * 
+            do if [ -d "${D}" ]; then
+              echo "Archive directory: $D"
+              ls -lah $D/*
+              mv $D/* ./
+            fi
+          done;
+          ls -lah
+
+      # Add timestamp to development builds
+      - name: Create GitHub development build archives
+        if: "!contains(github.ref, 'tags/v')"
+        run: |
+          echo "append timestamp for development builds"
+          for filename in *.tar.gz; do mv $filename "$(basename $filename .tar.gz)-${{ env.TIMESTAMP }}.tar.gz"; done;
+          echo "create hashes"
+          for filename in *.tar.gz; do echo "sha256  `sha256sum $filename`" >> ${{ env.HASH_FILENAME }}; done;
+          ls -lah
+
+      # Checkout is required for the next `gh release delete` step
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: main
+
+      # We have to delete the "latest" release, otherwise `softprops/action-gh-release` will only append the new artifact.
+      # This simulates the old marvinpinto/action-automatic-releases action.
+      - name: Remove previous pre-release
+        run: |
+          cd main
+          gh release delete latest --cleanup-tag -y || true
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      # Use conventional commit changelog, and append the GitHub generated changelog
+      - name: Create pre-release
+        if: "!contains(github.ref, 'tags/v')"
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: true
+          tag_name: latest
+          body_path: ${{ env.BUILD_CHANGELOG }}
+          generate_release_notes: true
+          name: "Development Build"
+          files: |
+            *.tar.gz
+            ${{ env.HASH_FILENAME }}
+
+      - name: Create GitHub release archives
+        if: "contains(github.ref, 'tags/v')"
+        run: |
+          echo "create hashes"
+          for filename in *.tar.gz; do echo "sha256  `sha256sum $filename`" >> ${{ env.HASH_FILENAME }}; done;
+          ls -lah
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        if: "contains(github.ref, 'tags/v')"
+        with:
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            *.tar.gz
+            ${{ env.HASH_FILENAME }}

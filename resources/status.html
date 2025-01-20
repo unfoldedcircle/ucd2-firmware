@@ -1,0 +1,152 @@
+<!-- Master status page template -->
+<!-- Split into _footer & _header (without the table line) and then embedded in service_ota.cpp during the build -->
+<html lang="en">
+    <head>
+        <style>
+            body {
+                background-color: rgb(20, 20, 20);
+                font-family: Arial, Helvetica, sans-serif;
+                line-height: 1.5;
+                color: rgb(234, 244, 245);
+            }
+            a {
+                color: rgb(88, 88, 88);
+                text-decoration: none;
+            }
+            a:hover {
+                text-decoration: underline;
+            }
+            .wrapper {
+                width: 100%;
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            .line-break {
+                width: 100%;
+            }
+            .header {
+                min-width: 400px;
+                width: 50%;
+                margin: 40px 0 20px 0;
+                text-align: center;
+            }
+            h1 {
+                font-size: 22px;
+                font-weight: 300;
+            }
+            ul {
+                background-color: black;
+                min-width: 400px;
+                width: 50%;
+                border-radius: 8px;
+                list-style: none;
+                padding: 0;
+            }
+            li {
+                border-bottom: 1px solid rgba(84, 84, 84, 0.48);
+                padding: 0;
+                display: flex;
+            }
+            li:last-child {
+                border-bottom: 0px;
+            }
+            .title {
+                min-width: 20%;
+                padding: 10px;
+                color: rgb(88, 88, 88);
+            }
+            .content {
+                border-left: 1px solid rgba(84, 84, 84, 0.48);
+                padding: 10px;
+            }
+        </style>
+        <title>Remote Two - Smart Charging Dock</title>
+    </head>
+    <body>     
+        <div class="wrapper">
+            <div class="header">
+                <img width="60px" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPCEtLSBHZW5l cmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDI2LjAuMywgU1ZHIEV4cG9ydCBQbHVn LUluIC4gU1ZHIFZlcnNpb246IDYuMDAgQnVpbGQgMCkgIC0tPgo8c3ZnIHZlcnNp b249IjEuMCIgaWQ9IkxheWVyXzEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8y MDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxp bmsiIHg9IjBweCIgeT0iMHB4IgogICAgIHZpZXdCb3g9IjAgMCAxNDIgOTQuNiIg c3R5bGU9ImVuYWJsZS1iYWNrZ3JvdW5kOm5ldyAwIDAgMTQyIDk0LjY7IiB4bWw6 c3BhY2U9InByZXNlcnZlIj4KPHN0eWxlIHR5cGU9InRleHQvY3NzIj4KCS5zdDB7 ZmlsbDojRkZGRkZGO30KPC9zdHlsZT4KICA8Zz4KCTxwYXRoIGNsYXNzPSJzdDAi IGQ9Ik0xNDIsOTQuNmMtMjYuMSwwLTQ3LjMtMjEuMi00Ny4zLTQ3LjNTMTE1Ljgs MCwxNDIsMFY5NC42eiIvPgogICAgPHBhdGggY2xhc3M9InN0MCIgZD0iTTk0LjYs NDcuM0gwYzAsMjYuMSwyMS4yLDQ3LjMsNDcuMyw0Ny4zUzk0LjYsNzMuNSw5NC42 LDQ3LjMiLz4KPC9nPgo8L3N2Zz4K" alt="UC logo">
+                <h1>Remote Two - Smart Charging Dock</h1>
+            </div>
+            <div class="line-break"></div>
+            <ul>
+                <li>
+                    <div class="title">
+                        Name
+                    </div>
+                    <div class="content">
+                        %NAME%
+                    </div>
+                </li>
+                <li>
+                    <div class="title">
+                        Hostname
+                    </div>
+                    <div class="content">
+                        %HOSTNAME%
+                    </div>
+                </li>
+                <li>
+                    <div class="title">
+                        Version
+                    </div>
+                    <div class="content">
+                        %VERSION%
+                    </div>
+                </li>
+                <li>
+                    <div class="title">
+                        Serial
+                    </div>
+                    <div class="content">
+                        %SERIAL%
+                    </div>
+                </li>
+                <li>
+                    <div class="title">
+                        Model
+                    </div>
+                    <div class="content">
+                        %MODEL%
+                    </div>
+                </li>
+                <li>
+                    <div class="title">
+                        Revision
+                    </div>
+                    <div class="content">
+                        %REVISION%
+                    </div>
+                </li>
+                <li>
+                    <div class="title">
+                        Free heap
+                    </div>
+                    <div class="content">
+                        %HEAP%
+                    </div>
+                </li>
+                <li>
+                    <div class="title">
+                        Uptime
+                    </div>
+                    <div class="content">
+                        %UPTIME%
+                    </div>
+                </li>
+                <li>
+                    <div class="title">
+                        Reset reason
+                    </div>
+                    <div class="content">
+                        %RESET%
+                    </div>
+                </li>
+            </ul>
+            <p style="width: 100%; text-align: center;">
+                For more information and support, visit <a href="https://support.unfoldedcircle.com">support.unfoldedcircle.com</a>
+            </p>
+        </div>
+    </body>
+</html>
