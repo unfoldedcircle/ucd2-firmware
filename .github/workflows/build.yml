@@ -25,8 +25,9 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       with:
+        persist-credentials: false
         # History of 200 should be more than enough to calculate commit count since last release tag.
         fetch-depth: 200
 
@@ -40,20 +41,20 @@ jobs:
         echo "FW_VERSION=$FW_VERSION" >> $GITHUB_ENV
 
     - name: Cache pip
-      uses: actions/cache@v4
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
         #restore-keys: |
         #  ${{ runner.os }}-pip-
     - name: Cache PlatformIO
-      uses: actions/cache@v4
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
       with:
         path: ~/.platformio
         key: ${{ runner.os }}-${{ hashFiles('**/package.json') }}
         # key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }} this was from the original docs, but there are no lockfiles!
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c # v4.9.1
     - name: Install PlatformIO
       run: |
         python -m pip install --upgrade pip
@@ -99,7 +100,7 @@ jobs:
         tar -czvf ${{ env.APP_NAME }}_${{ env.BOARD_REV_1 }}-${{ env.FW_VERSION }}.tar.gz ./${{ env.APP_NAME }}_${{ env.BOARD_REV_1 }}.bin*
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: ${{ env.APP_NAME }}_${{ env.BOARD_REV_1 }}-${{ env.FW_VERSION }}
         path: ${{ env.APP_NAME }}_${{ env.BOARD_REV_1 }}-${{ env.FW_VERSION }}.tar.gz
@@ -111,12 +112,13 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "lts/*"
 
@@ -127,7 +129,7 @@ jobs:
           cat ${{ env.BUILD_CHANGELOG }}
 
       - name: Upload changelog
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: changelog
           path: ${{ env.BUILD_CHANGELOG }}
@@ -142,7 +144,7 @@ jobs:
 
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
 
       - name: Log
         if: env.DEBUG_OUTPUT == 'true'
@@ -181,8 +183,9 @@ jobs:
 
       # Checkout is required for the next `gh release delete` step
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           path: main
 
       # We have to delete the "latest" release, otherwise `softprops/action-gh-release` will only append the new artifact.
@@ -197,7 +200,7 @@ jobs:
       # Use conventional commit changelog, and append the GitHub generated changelog
       - name: Create pre-release
         if: "!contains(github.ref, 'tags/v')"
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           prerelease: true
           tag_name: latest
@@ -216,7 +219,7 @@ jobs:
           ls -lah
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         if: "contains(github.ref, 'tags/v')"
         with:
           prerelease: false
